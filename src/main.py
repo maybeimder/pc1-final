@@ -4,6 +4,7 @@ import os
 import sys
 from server import Server
 from worker import Worker
+from listener import listen_for_workers_udp
 
 
 if __name__ == "__main__":
@@ -33,15 +34,11 @@ if __name__ == "__main__":
 
     print(f"[MAIN] Videos detectados: {video_paths}")
 
-    server = Server(
-        workers = {
-            "worker8" : Worker("worker8" , "10.0.0.35", 5050),
-            "worker9" : Worker("worker9" , "10.0.0.36", 5050),
-            "worker10": Worker("worker10", "10.0.0.37", 5050),
-            "worker11": Worker("worker11", "10.0.0.38", 5050),
-        },
-        videos =video_paths,
-        output_folder = output_folder
+    workers = listen_for_workers_udp (
+        main_port= 6000,
+        expected_workers=4,
+        worker_factory= lambda name,ip,port: Worker(name, ip, port)
     )
 
+    server = Server(workers, video_paths, output_folder)
     server.start()

@@ -56,9 +56,19 @@ class Worker:
 # Leer argumentos desde ejecucion
 if __name__ == "__main__":
     import sys
+    from listener import register_with_main_udp
+
     name = sys.argv[1]
     ip = sys.argv[2]
     port = int(sys.argv[3])
+
+    register_with_main_udp (
+        name=name,
+        ip=ip,
+        port=port,
+        main_ip="127.0.0.1",   
+        main_port=6000
+    )
 
     worker = Worker(name, ip, port)
     worker.start()
