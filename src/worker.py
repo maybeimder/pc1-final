@@ -66,7 +66,7 @@ if __name__ == "__main__":
         name=name,
         ip=ip,
         port=port,
-        main_ip="127.0.0.1",   
+        main_ip="10.0.0.35",   
         main_port=6000
     )
 
