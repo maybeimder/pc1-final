@@ -1,5 +1,6 @@
+# pylint: disable=import-error
 import os
-from moviepy import VideoFileClip
+from moviepy import VideoFileClip, clips_array
 import gc
 
 def ensure_path( input_path:str, output_path:str ):
@@ -18,6 +19,8 @@ def divide_video( segment_duration:int, input_path:str, output_path:str ):
     
     if base_name is None:
         return
+    
+    rutas_clips = []
 
     try:
         # Cargar el video temporalmente para obtener la duración
@@ -46,6 +49,9 @@ def divide_video( segment_duration:int, input_path:str, output_path:str ):
             
             # Escribir el nuevo archivo de video
             clip.write_videofile(output, codec="libx264", audio_codec="aac", logger=None)
+
+            # Guardar la ruta del clip generado
+            rutas_clips.append(output)
             
             clip.close()
             video.close()
@@ -59,5 +65,92 @@ def divide_video( segment_duration:int, input_path:str, output_path:str ):
         print(f" Error al procesar {input_path}: {e}")
         import traceback
         traceback.print_exc()
-            
-    print(f"    [d:] Video cortado y guardado en la carpeta {output_path}")
+        return []
+
+    print(f"    [d:] Video cortado y guardado en la carpeta {output_path}")        
+    print(f"[divide_video] Se generaron {len(rutas_clips)} clips")
+    
+    return rutas_clips
+
+def video_collage(rutas_clips, rows, cols, output_path):
+    
+    if not rutas_clips:
+        print("[video_collage] No hay clips para procesar.")
+        return
+    
+    # --- Cargar todos los clips ---
+    clips = []
+    for path in rutas_clips:
+        try:
+            clip = VideoFileClip(path)
+            clips.append(clip)
+            print(f"[video_collage] Cargado: {os.path.basename(path)}")
+        except Exception as e:
+            print(f"[video_collage] Error cargando {path}: {e}")
+
+    if len(clips) == 0:
+        print("[video_collage] No se pudieron cargar clips.")
+        return
+    
+    total_needed = rows * cols
+    print(f"[video_collage] Grid: {rows}x{cols} = {total_needed} posiciones")
+    print(f"[video_collage] Clips disponibles: {len(clips)}")
+
+    # --- Si faltan clips, repetir desde el inicio ---
+    if len(clips) < total_needed:
+        print(f"[video_collage] Faltan {total_needed - len(clips)} clips, se replicarán.")
+        original_count = len(clips)
+        while len(clips) < total_needed:
+            # Clonar clips en orden cíclico
+            idx = len(clips) % original_count
+            clips.append(clips[idx])
+
+    # --- Si sobran clips, usar solo los necesarios ---
+    if len(clips) > total_needed:
+        print(f"[video_collage] Sobran {len(clips) - total_needed} clips, se usarán los primeros {total_needed}")
+        clips = clips[:total_needed]
+
+    # --- Ajustar tamaño uniforme ---
+    # Tomar el tamaño del primer clip como referencia
+    w, h = clips[0].size
+    print(f"[video_collage] Tamaño de referencia: {w}x{h}")
+    
+    clips_resized = []
+    for i, c in enumerate(clips):
+        if c.size != (w, h):
+            print(f"[video_collage] Redimensionando clip {i+1}")
+            clips_resized.append(c.resized((w, h)))
+        else:
+            clips_resized.append(c)
+
+    # --- Construir grilla ---
+    grid = []
+    index = 0
+    for r in range(rows):
+        fila = []
+        for c in range(cols):
+            fila.append(clips_resized[index])
+            index += 1
+        grid.append(fila)
+
+    print("[video_collage] Generando collage...")
+    
+    # --- Crear collage ---
+    final = clips_array(grid)
+
+    # --- Guardar resultado ---
+    print(f"[video_collage] Guardando en {output_path}...")
+    final.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
+    clip = VideoFileClip("Neymar.mp4")
+    clip.preview()
+
+    # --- Liberar memoria ---
+    for c in clips:
+        c.close()
+    for c in clips_resized:
+        if c not in clips:  # Evitar cerrar dos veces
+            c.close()
+    final.close()
+    gc.collect()
+
+    print(f"[video_collage] ✓ Collage generado en: {output_path}")   
