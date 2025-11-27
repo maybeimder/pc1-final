@@ -3,6 +3,7 @@
 import socket
 import threading
 from m_video_splitter import divide_video
+import worker_handler as wh
 
 class Worker:
     def __init__(self, name:str, ip:str, port:int=5050, tasks:list | None = None ):
@@ -14,26 +15,15 @@ class Worker:
 
     def handle_connection(self, connection:socket.socket, address):
         # Manejador de comunicación con el main
-        message = connection.recv(2048).decode()
+        message = connection.recv(2048).decode().strip()
 
-        if "Task" in message:
-            payload = message.replace(" Task:", "", 1)
+        if message.startswith("SPLIT"): wh.handle_split_task(self.name, message);
+        elif message.startswith("COLLAGE"): wh.handle_collage_task(self.name, message);
+        else:
+            connection.close()
+            return
 
-            try:
-                output_folder, csv_paths = payload.split("|", 1)
-            except ValueError:
-                print(f"[{self.name}] Formato de mensaje inválido: {message}")
-                connection.close()
-                return
-
-            video_paths = [p.strip() for p in csv_paths.split(",") if p.strip()]
-
-            for path in video_paths:
-                print(f"[{self.name}] empezó a procesar {path}")
-                divide_video( 10, path, output_folder )
-
-            connection.send(b"DONE")
-        
+        connection.send(b"DONE")
         connection.close()
     
 
@@ -66,7 +56,7 @@ if __name__ == "__main__":
         name=name,
         ip=ip,
         port=port,
-        main_ip="10.0.0.35",   
+        main_ip="127.0.0.1",   
         main_port=6000
     )
 

@@ -5,8 +5,18 @@ import sys
 from server import Server
 from worker import Worker
 from listener import listen_for_workers_udp
-from m_video_splitter import video_collage
 
+def print_video_list(video_paths):
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
+
+    print("[")
+    for v in video_paths:
+        # Extrae solo el nombre de archivo
+        name = os.path.basename(v)
+
+        print(f'    "{GREEN}{name}{RESET}",')
+    print("]")
 
 if __name__ == "__main__":
 
@@ -33,16 +43,31 @@ if __name__ == "__main__":
         for f in video_files
     ]
 
-    print(f"[MAIN] Videos detectados: {video_paths}")
-
+    print(f"[MAIN] Videos detectados:")
+    print_video_list(video_paths)
+    
     workers = listen_for_workers_udp (
         main_port= 6000,
         expected_workers=4,
         worker_factory= lambda name,ip,port: Worker(name, ip, port)
     )
 
-    server = Server(workers, video_paths, output_folder)
-    server.start()
+    # [1] Fragmentador de videos
+    frag_server = Server(workers, video_paths, output_folder)
+    frag_server.start()
+
+    collage_output_folder = os.path.join(output_folder, "collages")
+    rows, cols = 2, 4 # Para 8 videos
+
+    # [2] Collage de videos
+    collage_server = Server(workers, list(range(12)), collage_output_folder, "collage")
+
+    collage_server.segments_folder = output_folder  
+    collage_server.rows = rows
+    collage_server.cols = cols
+    
+    collage_server.start()
+
 
 
     

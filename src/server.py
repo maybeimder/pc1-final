@@ -5,11 +5,12 @@ import threading
 from worker import Worker
 
 class Server:
-    def __init__(self, workers:dict, videos:list, output_folder:str ):
+    def __init__(self, workers:dict, videos:list, output_folder:str, mode:str="split"):
         self.workers = workers
         self.workers_tasks = []
         self.video_paths = videos
         self.output_folder = output_folder
+        self.mode = mode
 
 
     def split_tasks(self):
@@ -38,8 +39,18 @@ class Server:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((worker.ip, worker.port))
 
-            # Asignarle su tareita, testar la conexion con un string
-            message = f" Task:{self.output_folder}|{",".join(worker.tasks)}"
+            match(self.mode):
+                case "split":
+                    # Asignarle su tareita, testar la conexion con un string
+                    message = f"SPLIT:{self.output_folder}|{",".join(worker.tasks)}"
+
+                case "collage":
+                    message = f"COLLAGE:{self.segments_folder}|{self.output_folder}|{self.rows}|{self.cols}|{",".join(str(x) for x in worker.tasks)}"
+
+                case _:
+                    raise ValueError(f"Modo de server desconocido: {self.mode}")
+
+
             sock.send(message.encode())
 
             # Esperar a respuesta
