@@ -42,10 +42,10 @@ class Server:
             match(self.mode):
                 case "split":
                     # Asignarle su tareita, testar la conexion con un string
-                    message = f"SPLIT:{self.output_folder}|{",".join(worker.tasks)}"
+                    message = f"SPLIT:{self.output_folder}|{','.join(worker.tasks)}"
 
                 case "collage":
-                    message = f"COLLAGE:{self.segments_folder}|{self.output_folder}|{self.rows}|{self.cols}|{",".join(str(x) for x in worker.tasks)}"
+                    message = f"COLLAGE:{self.segments_folder}|{self.output_folder}|{self.rows}|{self.cols}|{','.join(str(x) for x in worker.tasks)}"
 
                 case _:
                     raise ValueError(f"Modo de server desconocido: {self.mode}")
