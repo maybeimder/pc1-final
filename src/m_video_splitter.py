@@ -1,7 +1,6 @@
-# pylint: disable=import-error
 import os
 from moviepy import VideoFileClip, clips_array
-import gc
+import gc, glob
 
 def ensure_path( input_path:str, output_path:str ):
     # Asegurar que exista un directorio de salida
@@ -72,15 +71,31 @@ def divide_video( segment_duration:int, input_path:str, output_path:str ):
     
     return rutas_clips
 
-def video_collage(rutas_clips, rows, cols, output_path):
+def video_collage(segment_number: int, output_folder: str, collage_output_folder: str, rows: int, cols: int):
     
-    if not rutas_clips:
-        print("[video_collage] No hay clips para procesar.")
-        return
+    print(f"\n[collage] Creando collage #{segment_number}")
+
+    # Buscar todos los clips con ese número de segmento
+    all_clips = sorted(glob.glob(os.path.join(output_folder, "*_*.mp4")))
     
-    # --- Cargar todos los clips ---
+    # Filtrar solo los clips del segmento específico
+    segment_clips = [
+        clip for clip in all_clips 
+        if clip.endswith(f"_{segment_number}.mp4")
+    ]
+    
+    if not segment_clips:
+        print(f"[collage] No se encontraron clips para segmento {segment_number}")
+        return False
+    
+    print(f"[collage] Clips encontrados para segmento {segment_number}: {len(segment_clips)}")
+    for clip in segment_clips:
+        print(f"  - {os.path.basename(clip)}")
+    
+    # Cargar todos los clips 
     clips = []
-    for path in rutas_clips:
+    for path in segment_clips:
+
         try:
             clip = VideoFileClip(path)
             clips.append(clip)
@@ -89,14 +104,14 @@ def video_collage(rutas_clips, rows, cols, output_path):
             print(f"[video_collage] Error cargando {path}: {e}")
 
     if len(clips) == 0:
-        print("[video_collage] No se pudieron cargar clips.")
+        print(f"[collage] No se pudieron cargar clips para segmento {segment_number}")
         return
     
     total_needed = rows * cols
     print(f"[video_collage] Grid: {rows}x{cols} = {total_needed} posiciones")
     print(f"[video_collage] Clips disponibles: {len(clips)}")
 
-    # --- Si faltan clips, repetir desde el inicio ---
+    # Si faltan clips, repetir desde el inicio
     if len(clips) < total_needed:
         print(f"[video_collage] Faltan {total_needed - len(clips)} clips, se replicarán.")
         original_count = len(clips)
@@ -105,13 +120,12 @@ def video_collage(rutas_clips, rows, cols, output_path):
             idx = len(clips) % original_count
             clips.append(clips[idx])
 
-    # --- Si sobran clips, usar solo los necesarios ---
+    # Si sobran clips, usar solo los necesarios
     if len(clips) > total_needed:
         print(f"[video_collage] Sobran {len(clips) - total_needed} clips, se usarán los primeros {total_needed}")
         clips = clips[:total_needed]
 
-    # --- Ajustar tamaño uniforme ---
-    # Tomar el tamaño del primer clip como referencia
+    # Ajustar tamaño uniforme
     w, h = clips[0].size
     print(f"[video_collage] Tamaño de referencia: {w}x{h}")
     
@@ -123,7 +137,7 @@ def video_collage(rutas_clips, rows, cols, output_path):
         else:
             clips_resized.append(c)
 
-    # --- Construir grilla ---
+    # Construir grilla 
     grid = []
     index = 0
     for r in range(rows):
@@ -135,22 +149,30 @@ def video_collage(rutas_clips, rows, cols, output_path):
 
     print("[video_collage] Generando collage...")
     
-    # --- Crear collage ---
+    # Crear collage 
     final = clips_array(grid)
 
-    # --- Guardar resultado ---
+    # Guardar resultado 
+    os.makedirs(collage_output_folder, exist_ok=True)
+    output_path = os.path.join(collage_output_folder, f"collage_{segment_number}.mp4")
     print(f"[video_collage] Guardando en {output_path}...")
     final.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
-    clip = VideoFileClip("Neymar.mp4")
-    clip.preview()
 
-    # --- Liberar memoria ---
+    # Liberar memoria 
     for c in clips:
-        c.close()
-    for c in clips_resized:
-        if c not in clips:  # Evitar cerrar dos veces
+        try:
             c.close()
+        except:
+            pass
+
+    for c in clips_resized:
+        try:
+            c.close()
+        except:
+            pass
+
     final.close()
     gc.collect()
 
-    print(f"[video_collage] ✓ Collage generado en: {output_path}")   
+    print(f"[video_collage] ✓ Collage generado en: {output_path}")
+    return True   

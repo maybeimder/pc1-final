@@ -41,34 +41,8 @@ if __name__ == "__main__":
         worker_factory= lambda name,ip,port: Worker(name, ip, port)
     )
 
-    #Crear el collage
-    
-    GRID_ROWS = 2
-    GRID_COLS = 3
-    
-    # Ruta compartida para subir videos
-    RUTA_COMPARTIDA = os.path.join("C:/Users/Santiago Vengoechea/Documents/Universidad/SEMESTRE VI/Estructuras del Computador")
-    
-    # Crear la carpeta si no existe
-    os.makedirs(RUTA_COMPARTIDA, exist_ok=True)
-
-    # Buscar todos los clips generados en output_folder
-    clips_generados = [
-        os.path.join(output_folder, f)
-        for f in sorted(os.listdir(output_folder))
-        if f.endswith(".mp4")
-    ]
-    
-    if clips_generados:
-        print(f"[MAIN] Se encontraron {len(clips_generados)} clips procesados")
-        
-        # Guardar collage en la ruta compartida
-        collage_output = os.path.join(RUTA_COMPARTIDA, "collage_final.mp4")
-        print(f"[MAIN] Guardando collage en: {collage_output}")
-        
-        video_collage(clips_generados, GRID_ROWS, GRID_COLS, collage_output)
-    else:
-        print("[MAIN] No se encontraron clips para crear collage")
-
     server = Server(workers, video_paths, output_folder)
     server.start()
+
+
+    
